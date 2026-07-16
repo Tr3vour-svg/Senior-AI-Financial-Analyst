@@ -1,0 +1,27 @@
+# Web Framework & App Servers
+fastapi
+uvicorn
+python-multipart
+pydantic
+pydantic-settings
+
+# LLM Orchestration & Evaluation
+langchain
+langchain-core
+langchain-community
+langchain-openai
+langgraph
+ragas
+
+# Vector Database & Processing Pipelines
+pinecone-client
+pinecone-text
+langchain-pinecone
+unstructured
+pypdf
+python-dotenv
+tiktoken
+
+# Web Dashboard Frontend
+streamlit
+requests
