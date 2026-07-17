@@ -70,7 +70,7 @@ if user_input:
                     
                     st.markdown(answer)
                     if sources:
-                        st.markdown(f"**Sources Evaluated:** " + " ".join([f"<span class='source-tag'>{s}</span>" for s in msg['sources']]), unsafe_allow_html=True)
+                        st.markdown(f"**Sources Evaluated:** " + " ".join([f"<span class='source-tag'>{s}</span>" for s in sources]), unsafe_allow_html=True)
                     
                     st.session_state.messages.append({"role": "assistant", "content": answer, "sources": sources})
                 else:

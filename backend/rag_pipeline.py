@@ -97,26 +97,37 @@ def get_hybrid_retriever(bm25_encoder: Any):
         embeddings=embeddings, 
         sparse_encoder=bm25_encoder, 
         index=index,
-        namespace=NAMESPACE
+        namespace=NAMESPACE,
+        text_key="text"
     )
+
+    retriever.text_key = "text"
     return retriever
 
 def generate_final_answer(query: str, retrieved_docs: List[Any]) -> str:
     """Core RAG Generation with Advanced Reasoning Models (Claude-3.5/GPT-4o)"""
-    if ChatOpenAI is None or ChatPromptTemplate is None or StrOutputParser is None:
-        raise RuntimeError("Required LLM dependencies are not installed")
-
-    llm = get_llm(model_name="gpt-4o", temperature=0.0) # Swappable with target models
+    llm = get_llm(model_name="gpt-4o", temperature=0.0) 
     
+    # Clean and build the context block string safely
     context_block = "\n\n".join([
         f"Source: {doc.metadata.get('source')} (Page {doc.metadata.get('page_number')})\nContent: {doc.page_content}"
         for doc in retrieved_docs
     ])
     
+    # Ensure there are NO unescaped single curly braces '{}' in this system or human prompt!
     prompt = ChatPromptTemplate.from_messages([
-        ("system", "You are an Expert Financial Analyst. Review the 10-K document contexts provided and synthesize a highly accurate precision analysis."),
-        ("human", "Contexts:\n{context_block}\n\nQuestion: {query}")
+        (
+            "system", 
+            "You are an Expert Financial Analyst. Review the 10-K document contexts provided and synthesize a highly accurate precision analysis."
+        ),
+        (
+            "human", 
+            "Contexts:\n{context_block}\n\nQuestion: {query}"
+        )
     ])
     
     chain = prompt | llm | StrOutputParser()
-    return chain.invoke({"context_block": context_block, "query": query})
+    return chain.invoke({
+        "context_block": context_block, 
+        "query": query
+    })

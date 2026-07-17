@@ -1,13 +1,15 @@
 import os
 import time
 import asyncio
-from fastapi import FastAPI, HTTPException
+import traceback
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 
 # Import modules from the pipeline implementation
-from pipeline import get_hybrid_retriever, generate_final_answer
+from rag_pipeline import get_hybrid_retriever, generate_final_answer
 
 app = FastAPI(title="Senior AI Financial Analyst API Server")
 
@@ -18,6 +20,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- GLOBAL EXCEPTION HANDLER FOR DIAGNOSTICS ---
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print("="*60)
+    print("🚨 CRITICAL BACKEND ERROR TRACEBACK:")
+    traceback.print_exception(type(exc), exc, exc.__traceback__)
+    print("="*60)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc), "type": type(exc).__name__}
+    )
+# ------------------------------------------------
 
 class QueryRequest(BaseModel):
     query: str
@@ -44,25 +59,23 @@ def health_check():
 @app.post("/analyze/stream", response_model=ChatResponse)
 async def analyze_stream(request: QueryRequest):
     start_time = time.time()
-    try:
-        # 1. Fetch relevant hybrid context indices
-        retriever = get_hybrid_retriever(bm25_instance)
-        docs = retriever.invoke(request.query)
-        
-        # 2. Run analysis generation chain
-        answer = generate_final_answer(request.query, docs)
-        
-        latency = time.time() - start_time
-        sources_list = list(set([doc.metadata.get("source", "Unknown") for doc in docs]))
-        
-        return ChatResponse(
-            answer=answer,
-            num_docs=len(docs),
-            latency_seconds=round(latency, 2),
-            sources=sources_list
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    
+    # 1. Fetch relevant hybrid context indices
+    retriever = get_hybrid_retriever(bm25_instance)
+    docs = retriever.invoke(request.query)
+    
+    # 2. Run analysis generation chain
+    answer = generate_final_answer(request.query, docs)
+    
+    latency = time.time() - start_time
+    sources_list = list(set([doc.metadata.get("source", "Unknown") for doc in docs]))
+    
+    return ChatResponse(
+        answer=answer,
+        num_docs=len(docs),
+        latency_seconds=round(latency, 2),
+        sources=sources_list
+    )
 
 if __name__ == "__main__":
     import uvicorn
